@@ -39,7 +39,7 @@ jobs:
         fi
         echo "new_version=$new_version" | tee -a $GITHUB_OUTPUT
       env:
-        GH_TOKEN: ${{ secret.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ github.token }}
     - name: Build sdist
       run: python3 -m build --sdist . --outdir ./dist
     - uses: actions/upload-artifact@v7

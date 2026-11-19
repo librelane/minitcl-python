@@ -29,6 +29,8 @@ ext = Pybind11Extension(
     ["src/main.cc"],
     include_dirs=[tcl / "generic"],
     extra_objects=[str(tcl / "libtcl9.1.a")],
+    # must be linked manually because we're linking libtcl statically
+    libraries=["z"]
 )
 ext.cxx_std = 17
 

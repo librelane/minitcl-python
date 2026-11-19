@@ -93,7 +93,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
-          CIBW_BEFORE_ALL: cibw/before_all.sh
+          CIBW_BEFORE_ALL: bash cibw/before_all.sh
           # patchelf version installed by default creates a corrupt ELF binary
           # sometimes
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: pip3 install --upgrade patchelf && auditwheel repair -w {dest_dir} {wheel}

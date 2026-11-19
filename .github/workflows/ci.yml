@@ -80,12 +80,12 @@ jobs:
         with:
           path: dist
           pattern: python-wheels-sdist
+      - name: Extract sdist
+        run: |
+          tar -xzvC . -f ./dist/*.tar.gz --strip-components=1
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.3.5
         with:
-          # despite its name, it's passed as-is to the cibuildwheel command and
-          # can point to a file
-          package-dir: ./dist/minitcl-${{ needs.version_and_sdist.outputs.version }}.tar.gz
           output-dir: dist
         env:
           CIBW_ARCHS: ${{ matrix.os.archs }}
@@ -93,6 +93,7 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
           CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_BEFORE_ALL: cibw/before_all.sh
           # patchelf version installed by default creates a corrupt ELF binary
           # sometimes
           CIBW_REPAIR_WHEEL_COMMAND_LINUX: pip3 install --upgrade patchelf && auditwheel repair -w {dest_dir} {wheel}

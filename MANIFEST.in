@@ -15,3 +15,4 @@ include tcl/Makefile
 include tcl/license.terms
 include Readme.md
 include minitcl/py.typed
+include cibw/*

@@ -38,7 +38,13 @@ class build_minitcl(build_ext):
         # ensure tcl is built
         if not (tcl / "libtcl9.1.a").is_file():
             subprocess.check_call(
-                [tcl / "unix" / "configure", "--disable-shared"],
+                [
+                    tcl / "unix" / "configure",
+                    "--disable-shared",
+                    "--disable-zipfs",
+                    # some distros lack zlib headers
+                    f"CFLAGS=-I{tcl / 'compat' / 'zlib'}",
+                ],
                 cwd=tcl,
             )
             subprocess.check_call(

@@ -1,0 +1,17 @@
+
+recursive-include tcl compat/**/*
+recursive-include tcl generic/**/*
+recursive-include tcl library/**/*
+recursive-include tcl tools/**/*
+recursive-include tcl unix/**/*
+include tcl/macosx/*
+include tcl/utf8proc/*
+include tcl/libtommath/*.c
+include tcl/libtommath/*.h
+include tcl/libtommath/*.def
+include tcl/libtommath/LICENSE
+include tcl/libtommath/makefile*
+include tcl/Makefile
+include tcl/license.terms
+include Readme.md
+include minitcl/py.typed

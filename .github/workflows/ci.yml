@@ -1,0 +1,130 @@
+# Copyright (C) 2026 Mohamed Gaber
+#
+# Partially adapted from Yosys wheels
+#
+# Copyright (C) 2024 UmbraLogic Technologies LLC
+#
+# SPDX-License-Identifier: MIT
+name: Build Wheels for PyPI
+
+# Events that trigger workflow
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+
+jobs:
+  version_and_sdist:
+    name: Get version and generate sdist
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      new_version: ${{ steps.check-new-version.outputs.new_version }}
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: true
+        persist-credentials: false
+    - uses: actions/setup-python@v6
+    - run: pip3 install --upgrade pip build
+    - id: get-version
+      run: |
+        echo "version=$(python3 -m build --metadata . | jq -r .version)" | tee -a $GITHUB_OUTPUT
+    - id: check-new-version
+      run: |
+        new_version=1
+        if gh release view "v${{ steps.get-version.outputs.version }}"; then
+          new_version=0
+        fi
+        echo "new_version=$new_version" | tee -a $GITHUB_OUTPUT
+      env:
+        GH_TOKEN: ${{ secret.GITHUB_TOKEN }}
+    - name: Build sdist
+      run: python3 -m build --sdist . --outdir ./dist
+    - uses: actions/upload-artifact@v7
+      with:
+        name: python-wheels-sdist
+        path: ./dist/*
+  build_wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+            {
+              name: "Ubuntu 26.04",
+              family: "linux",
+              runner: "ubuntu-26.04",
+              archs: "x86_64",
+            },
+            {
+              name: "Ubuntu 26.04",
+              family: "linux",
+              runner: "ubuntu-26.04-arm",
+              archs: "aarch64",
+            },
+            {
+              name: "macOS 26",
+              family: "macos",
+              runner: "macos-26",
+              archs: "arm64",
+            },
+          ]
+    name: Build binary wheels from sdist | ${{ matrix.os.name }} | ${{ matrix.os.archs }}
+    runs-on: ${{ matrix.os.runner }}
+    needs: [version_and_sdist]
+    steps:
+      - uses: actions/setup-python@v5
+      - name: Download sdist
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: python-wheels-sdist
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.3.5
+        with:
+          # despite its name, it's passed as-is to the cibuildwheel command and
+          # can point to a file
+          package-dir: ./dist/minitcl-${{ needs.version_and_sdist.outputs.version }}.tar.gz
+          output-dir: dist
+        env:
+          CIBW_ARCHS: ${{ matrix.os.archs }}
+          CIBW_BUILD_VERBOSITY: "1"
+          CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=11
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          # patchelf version installed by default creates a corrupt ELF binary
+          # sometimes
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: pip3 install --upgrade patchelf && auditwheel repair -w {dest_dir} {wheel}
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest {project}/test
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-wheels-${{ matrix.os.runner }}-${{ matrix.os.archs }}
+          path: ./dist/*.whl
+  upload_wheels:
+    name: Upload Wheels
+    runs-on: ubuntu-26.04
+    needs: [version_and_sdist, build_wheels]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.version_and_sdist.outputs.new_version == '1'
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: python-wheels-*
+          merge-multiple: true
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '${{ needs.version_and_sdist.outputs.version }}'
+        run: |
+          gh release create "v$TAG" \
+            --repo '${{ github.repository }}' \
+            --target '${{ github.sha }}'
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1

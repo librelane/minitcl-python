@@ -1,0 +1,11 @@
+/*venv
+*.so
+*.egg-info
+/.tcl-lsp
+/.ruff_cache
+__pycache__
+/build
+/wheelhouse
+/dist
+*.whl
+*.pyi
